@@ -1,0 +1,204 @@
+---
+title: "Final_Project_exploration"
+output: pdf_document
+date: "2025-11-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+library(factoextra)
+library(ggplot2)
+library(sf)
+library(maps)
+# install.packages("remotes")
+# remotes::install_github("mfherman/nycgeo") # Install the NYC data package
+library(nycgeo)
+```
+
+## R Markdown
+
+Loading and cleaning the data
+```{r load_data}
+citi_bike_data_1 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_1.csv")
+citi_bike_data_2 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_2.csv")
+citi_bike_data_3 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_3.csv")
+citi_bike_data_4 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_4.csv")
+citi_bike_data_5 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_5.csv")
+
+# dropping the NAs in the coordinates columns
+citi_bike_data_1 <- citi_bike_data_1 %>%
+  drop_na(end_lng, end_lat, start_lng, start_lat)
+citi_bike_data_2 <- citi_bike_data_2 %>%
+  drop_na(end_lng, end_lat, start_lng, start_lat)
+citi_bike_data_3 <- citi_bike_data_3 %>%
+  drop_na(end_lng, end_lat, start_lng, start_lat)
+citi_bike_data_4 <- citi_bike_data_4 %>%
+  drop_na(end_lng, end_lat, start_lng, start_lat)
+citi_bike_data_5 <- citi_bike_data_5 %>%
+  drop_na(end_lng, end_lat, start_lng, start_lat)
+
+# changing started_at and ended_at to datetime format
+citi_bike_data_1 <- citi_bike_data_1 %>%
+  mutate(started_at = as.POSIXct(started_at,format = "%Y-%m-%d %H:%M:%S"),
+         ended_at = as.POSIXct(ended_at, format = "%Y-%m-%d %H:%M:%S"))
+citi_bike_data_2 <- citi_bike_data_2 %>%
+  mutate(started_at = as.POSIXct(started_at,format = "%Y-%m-%d %H:%M:%S"),
+         ended_at = as.POSIXct(ended_at, format = "%Y-%m-%d %H:%M:%S"))
+citi_bike_data_3 <- citi_bike_data_3 %>%
+  mutate(started_at = as.POSIXct(started_at,format = "%Y-%m-%d %H:%M:%S"),
+         ended_at = as.POSIXct(ended_at, format = "%Y-%m-%d %H:%M:%S"))
+citi_bike_data_4 <- citi_bike_data_4 %>%
+  mutate(started_at = as.POSIXct(started_at,format = "%Y-%m-%d %H:%M:%S"),
+         ended_at = as.POSIXct(ended_at, format = "%Y-%m-%d %H:%M:%S"))
+citi_bike_data_5 <- citi_bike_data_5 %>%
+  mutate(started_at = as.POSIXct(started_at,format = "%Y-%m-%d %H:%M:%S"),
+         ended_at = as.POSIXct(ended_at, format = "%Y-%m-%d %H:%M:%S"))
+
+# changing the station ids from chr to dbl
+citi_bike_data_1 <- citi_bike_data_1 %>%
+  mutate(start_station_id = as.double(start_station_id),
+         end_station_id = as.double(end_station_id))
+citi_bike_data_2 <- citi_bike_data_2 %>%
+  mutate(start_station_id = as.double(start_station_id),
+         end_station_id = as.double(end_station_id))
+citi_bike_data_3 <- citi_bike_data_3 %>%
+  mutate(start_station_id = as.double(start_station_id),
+         end_station_id = as.double(end_station_id))
+citi_bike_data_4 <- citi_bike_data_4 %>%
+  mutate(start_station_id = as.double(start_station_id),
+         end_station_id = as.double(end_station_id))
+citi_bike_data_5 <- citi_bike_data_5 %>%
+  mutate(start_station_id = as.double(start_station_id),
+         end_station_id = as.double(end_station_id))
+
+# Train-test split
+data_split_1 <- initial_split(citi_bike_data_1, prop = 0.8)
+data_split_2 <- initial_split(citi_bike_data_2, prop = 0.8)
+data_split_3 <- initial_split(citi_bike_data_3, prop = 0.8)
+data_split_4 <- initial_split(citi_bike_data_4, prop = 0.8)
+data_split_5 <- initial_split(citi_bike_data_5, prop = 0.8)
+
+citi_bike_train_1 <- training(data_split_1)
+citi_bike_test_1 <- testing(data_split_1)
+citi_bike_train_2 <- training(data_split_2)
+citi_bike_test_2 <- testing(data_split_2)
+citi_bike_train_3 <- training(data_split_3)
+citi_bike_test_3 <- testing(data_split_3)
+citi_bike_train_4 <- training(data_split_4)
+citi_bike_test_4 <- testing(data_split_4)
+citi_bike_train_5 <- training(data_split_5)
+citi_bike_test_5 <- testing(data_split_5)
+```
+
+Data exploration
+```{r}
+
+nyc_boroughs <- nycgeo::borough_sf
+nyc_boroughs <- st_set_crs(nyc_boroughs, st_crs("EPSG:2263"))
+
+bike_data_coords_1 <- citi_bike_train_1 %>%
+  st_as_sf(coords = c("start_lng", "start_lat"), crs = 4326) %>%
+  st_transform(st_crs(nyc_boroughs))
+bike_data_coords_2 <- citi_bike_train_2 %>%
+  st_as_sf(coords = c("start_lng", "start_lat"), crs = 4326) %>%
+  st_transform(st_crs(nyc_boroughs))
+bike_data_coords_3 <- citi_bike_train_3 %>%
+  st_as_sf(coords = c("start_lng", "start_lat"), crs = 4326) %>%
+  st_transform(st_crs(nyc_boroughs))
+bike_data_coords_4 <- citi_bike_train_4 %>%
+  st_as_sf(coords = c("start_lng", "start_lat"), crs = 4326) %>%
+  st_transform(st_crs(nyc_boroughs))
+bike_data_coords_5 <- citi_bike_train_5 %>%
+  st_as_sf(coords = c("start_lng", "start_lat"), crs = 4326) %>%
+  st_transform(st_crs(nyc_boroughs))
+
+ggplot() +
+  geom_sf(data = nyc_boroughs, fill = "gray95", color = "black", linewidth = 0.5) +
+  geom_sf(data = bike_data_coords_1, size = 0.3, color = "blue", alpha = 0.3) +
+  labs(title = "Citi Bike Trip Endpoints in NYC (Oct 2025)",
+       caption = "Data source: Citi Bike 202510-tripdata") +
+  theme_minimal()
+
+ggplot() +
+  geom_sf(data = nyc_boroughs, fill = "gray95", color = "black", linewidth = 0.5) +
+  geom_sf(data = bike_data_coords_3, size = 0.3, color = "blue", alpha = 0.3) +
+  labs(title = "Citi Bike Trip Endpoints in NYC (Oct 2025)",
+       caption = "Data source: Citi Bike 202510-tripdata") +
+  theme_minimal()
+```
+Notes:
+groups 1-3 start times are 9/30 (Sept 30) 3:18pm, groups 1-2 start times go to 10/14 (Oct 14) 7:59pm
+group 3 start times go from 9/30 to 10/31 11:56pm
+groups 4-5 start time from 10/14 8:00pm to 10/31 11:58pm
+
+stations seem to be distributed throughout each group
+groups 2-3 have empty character strings for their end destination names.
+Some stations are only in one group however
+
+```{r}
+bike_data_coords_1 %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+```
+Most frequent start_station_names in group 1:
+"W 21 St & 6 Ave", "6 Ave & W 33 St", "Lafayette St & E 8 St", "9 Ave & W 33 St", "West St & Chambers St", "11 Ave & W 41 St", "Broadway & W 58 St", "Broadway & E 14 St", Norfolk St & Broome St", W 31 St & 7 Ave"
+Most frequent start_station_names in group 2:
+"W 21 St & 6 Ave", "West St & Chambers St", "W 31 St & 7 Ave", "Pier 61 at Chelsea Piers", "6 Ave & W 33 St", "Lafayette St & E 8 St", "University Pl & E 14 St", "E 17 St & Broadway", "Central Park S & 6 Ave", "9 Ave & W 33 St"
+Most frequent start_station_names in group 3:
+"W 21 St & 6 Ave", "Lafayette st & E 8 St", "University Pl & E 14 St", "9 Ave & W 33 St", "W 31 St & 7 Ave", "Broadway & E 14 St", "West St & Chambers St", "Pier 61 at Chelsea Piers", "Broadway & W 58 St", "E 17 St & Broadway"
+Most frequent start_station_names in group 4:
+"W 21 St & 6 Ave", "Lafayette St & E 8 St", "Broadway & E 14 St", "Ave A & E 14 St", "W 31 St & 7 Ave", "E 17 St & Broadway", "West St & Chambers St", "University Pl & E 14 St", "Central Park S & 6 Ave", "9 Ave & W 33 St"
+Most frequent start_station_names in group 5:
+"W 21 St & 6 Ave", "Lafayette St & E 8 St", "University Pl & E 14 St", "W 31 St & 7 Ave", "9 Ave & W 33 St", "Broadway & E 14 St", "Pier 61 at Chelsea Piers", "E 17 St & Broadway", "11 Ave & W 41 St", "Broadway & W 25 St"
+
+```{r}
+
+count_1 <- bike_data_coords_1 %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+count_2 <- bike_data_coords_2 %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+count_3 <- bike_data_coords_3 %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+count_4 <- bike_data_coords_4 %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+count_5 <- bike_data_coords_5 %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+library(viridis)
+ggplot() +
+  geom_sf(data = nyc_boroughs, fill = "gray95", color = "black", linewidth = 0.5) +
+  geom_sf(data = count_5 %>% arrange(count), aes(color = count, size = count)) +
+  scale_color_viridis_c(
+    option = "plasma", 
+    direction = -1,    
+    name = "Station usage"
+  ) +
+  scale_size_continuous(range = c(0.5, 3),  name = "Station usage") +
+  labs(title = "Heatmap of bike stations in NYC",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal()
+```
+From looking at all 5 heatmaps, the most concentration of bike users are in midtown manhattan, lower manhattan, and williamsburg in brooklyn.
+```{r}
+subway_stations <- read.csv("~/Documents/Data Science Class/Final Project/data/MTA_Subway_Stations.csv")
+oct_weather <- read.csv("~/Documents/Data Science Class/Final Project/data/NYC_October2025_Weather.csv")
+
+```
+
+Modelling:
+The kind of model we want to use is given the weather and the time of day, can we predict how many riders are going to be using the bike system? 
+Models we can use:
+- linear regression
+- ridge regression
+- lasso regression
+```{r}
+oct_weather <- oct_weather %>%
+  mutate(datetime = as.POSIXct(datetime, format = "%Y-%m-%dT%H:%M:%S"))
+```
+
