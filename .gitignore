@@ -1,0 +1,10 @@
+# Ignore a specific folder
+data/202510-citibike-tripdata/
+
+# Optional: Ignore all temporary macOS files
+.DS_Store
+
+# Optional: Ignore R/RStudio files
+.Rhistory
+.RData
+.Rproj.user/
