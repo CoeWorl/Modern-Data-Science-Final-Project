@@ -1,5 +1,5 @@
 # Ignore a specific folder
-data/202510-citibike-tripdata/
+data/
 
 # Optional: Ignore all temporary macOS files
 .DS_Store
