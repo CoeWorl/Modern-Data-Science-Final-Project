@@ -9,17 +9,20 @@ library(nycgeo)
 library(viridis)
 
 # Loading in Data
-citi_bike_data_1 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_1.csv")
-citi_bike_data_2 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_2.csv")
-citi_bike_data_3 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_3.csv")
-citi_bike_data_4 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_4.csv")
-citi_bike_data_5 <- read.csv("~/Documents/Data Science Class/Final Project/data/202510-citibike-tripdata/202510-citibike-tripdata_5.csv")
+# Download the data from the links provided in the README file
+# and provide the file paths below
+citi_bike_data_1 <- read.csv("Your file path here")
+citi_bike_data_2 <- read.csv("Your file path here")
+citi_bike_data_3 <- read.csv("Your file path here")
+citi_bike_data_4 <- read.csv("Your file path here")
+citi_bike_data_5 <- read.csv("Your file path here")
 
-subway_stations <- read.csv("~/Documents/Data Science Class/Final Project/data/MTA_Subway_Stations.csv")
-oct_weather <- read.csv("~/Documents/Data Science Class/Final Project/data/NYC_October2025_Weather.csv")
+subway_stations <- read.csv("Your file path here")
+oct_weather <- read.csv("Your file path here")
 
 # Combining all the citi bike data
-citi_bike_data <- rbind(citi_bike_data_1, citi_bike_data_2, citi_bike_data_3, citi_bike_data_4, citi_bike_data_5)
+citi_bike_data <- rbind(citi_bike_data_1, citi_bike_data_2, citi_bike_data_3,
+                        citi_bike_data_4, citi_bike_data_5)
 
 # Dropping NAs in the coordinates columns
 citi_bike_data <- citi_bike_data %>%
