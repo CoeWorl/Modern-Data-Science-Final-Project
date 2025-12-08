@@ -79,3 +79,41 @@ oct_weather_train <- oct_weather_train %>%
   select(-day)
 oct_weather_test <- oct_weather_test %>%
   select(-day)
+
+# Creating the map of NYC
+nyc_boroughs <- nycgeo::borough_sf
+nyc_boroughs <- st_set_crs(nyc_boroughs, st_crs("EPSG:2263"))
+
+bike_data_coords <- citi_bike_train %>%
+  st_as_sf(coords = c("start_lng", "start_lat"), crs = 4326) %>%
+  st_transform(st_crs(nyc_boroughs))
+
+ggplot() +
+  geom_sf(data = nyc_boroughs, fill = "gray95", color = "black", linewidth = 0.5) +
+  geom_sf(data = bike_data_coords, size = 0.3, color = "blue", alpha = 0.3) +
+  labs(title = "Citi Bike Trip Endpoints in NYC (Oct 2025)",
+       caption = "Data source: Citi Bike 202510-tripdata") +
+  theme_minimal()
+
+# Most frequent stops used in NYC
+bike_data_coords %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+
+counts <- bike_data_coords %>%
+  count(start_station_name, name = "count") %>%
+  arrange(desc(count))
+
+# Heat map of the bikes used at each station
+ggplot() +
+  geom_sf(data = nyc_boroughs, fill = "gray95", color = "black", linewidth = 0.5) +
+  geom_sf(data = counts %>% arrange(count), aes(color = count, size = count)) +
+  scale_color_viridis_c(
+    option = "plasma", 
+    direction = -1,    
+    name = "Station usage"
+  ) +
+  scale_size_continuous(range = c(0.5, 3),  name = "Station usage") +
+  labs(title = "Heatmap of bike stations in NYC",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal()
