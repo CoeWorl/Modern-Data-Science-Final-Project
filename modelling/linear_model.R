@@ -10,10 +10,11 @@ citi_bike_train <- citi_bike_train %>%
 citi_bike_train <- citi_bike_train %>%
   mutate(day = day(started_at))
 
-citi_bike_train <- citi_bike_train %>%
-  filter(day %% 5 != 1)
 citi_bike_val <- citi_bike_train %>%
   filter(day %% 5 == 1)
+citi_bike_train <- citi_bike_train %>%
+  filter(day %% 5 != 1)
+
 
 citi_bike_train <- citi_bike_train %>%
   select(-day)
@@ -80,5 +81,94 @@ lm_fits <- lapply(df_list, function(df) {
 lapply(lm_fits["9 Ave & W 33 St"], tidy)
 
 # Evaluation
-preds <- predict(lm_fit, trip_hourly_val)
-metrics(preds, truth = rides, estimate = .pred)
+# coefficient table that gets the coefficients for all variables across all stations
+coef_table <- map_df(
+  lm_fits,
+  ~ tidy(.x),
+  .id = "station"
+)
+
+# plotting coefficient estimates
+# seeing how the variables affect each station differently
+coef_top10 %>%
+  filter(term != "(Intercept)") %>%
+  ggplot(aes(x = term, y = estimate)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  facet_wrap(~ station, scales = "free_y") +
+  labs(title = "Model Coefficient Estimates by Station",
+       x = "Predictor",
+       y = "Estimate") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Finding the top 10 used stations and looking at plots on those 10
+top10_stations <- trip_hourly_train %>%
+  group_by(start_station_name) %>%
+  summarise(total_rides = sum(rides)) %>%
+  arrange(desc(total_rides)) %>%
+  slice_head(n=10) %>%
+  pull(start_station_name)
+
+# coefficient table of the 10 stations
+coef_top10 <- coef_table %>%
+  filter(term != "(Intercept)") %>%
+  filter(station %in% top10_stations)
+
+# plotting coefficient heatmap of top 10 stations
+ggplot(coef_top10, aes(x = term, y = station, fill = estimate)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  ) +
+  labs(
+    title = "Coefficient Heatmap (Top 10 Most Used Stations",
+    x = "Predictor",
+    y = "Station",
+    fill = "Estimate"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Prediction vs Actual Plots
+# filtering df_list and lm_fits to the top 10 stations
+df_list_top10 <- df_list[top10_stations]
+lm_fits_top10 <- lm_fits[top10_stations]
+
+# creating predictions for each station
+pred_list_top10 <- map2(
+  lm_fits_top10,
+  df_list_top10,
+  ~ augment(.x, new_data = .y)
+)
+
+# making a single dataframe
+pred_df_top10 <- bind_rows(pred_list_top10, .id = "station")
+
+# Plot
+ggplot(pred_df_top10, aes(x = .pred, y = rides)) +
+  geom_point(alpha = 0.4) +
+  geom_abline(color = "red") + 
+  facet_wrap(~ station, scales = "free") +
+  labs(
+    title = "Predicted vs Actual Rides (Top 10 Most Used Stations",
+    x = "Predicted Rides",
+    y = "Actual Rides"
+  ) +
+  theme_bw()
+
+# RMSE scores
+rmse_df_top10 <- pred_df_top10 %>%
+  group_by(station) %>%
+  summarise(RMSE = sqrt(mean((rides - .pred)^2)))
+
+ggplot(rmse_df_top10, aes(x = reorder(station, RMSE), y = RMSE)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "RMSE per Station",
+       x = "Station",
+       y = "RMSE") +
+  theme_bw()
