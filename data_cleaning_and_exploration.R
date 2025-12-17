@@ -17,7 +17,6 @@ citi_bike_data_3 <- read.csv("Your file path here")
 citi_bike_data_4 <- read.csv("Your file path here")
 citi_bike_data_5 <- read.csv("Your file path here")
 
-subway_stations <- read.csv("Your file path here")
 oct_weather <- read.csv("Your file path here")
 
 # Combining all the citi bike data

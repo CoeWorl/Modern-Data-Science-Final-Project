@@ -70,8 +70,9 @@ lm_workflow <- workflow() %>%
   add_model(linear_model) %>%
   add_recipe(lm_recipe)
 
-# splitting training data
+# splitting training data by station
 df_list <- split(trip_hourly_train, trip_hourly_train$start_station_name)
+df_list_val <- split(trip_hourly_val, trip_hourly_val$start_station_name)
 
 # fitting the model onto all the data sets
 lm_fits <- lapply(df_list, function(df) {
@@ -141,7 +142,7 @@ lm_fits_top10 <- lm_fits[top10_stations]
 # creating predictions for each station
 pred_list_top10 <- map2(
   lm_fits_top10,
-  df_list_top10,
+  df_list_val[names(lm_fits_top10)],
   ~ augment(.x, new_data = .y)
 )
 

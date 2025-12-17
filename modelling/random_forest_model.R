@@ -13,7 +13,7 @@ rf_spec <- rand_forest(
   mode = "regression",
   trees = 500
 ) %>%
-  set_engine("ranger")
+  set_engine("ranger", importance = "impurity")
 
 rf_workflow <- workflow() %>%
   add_recipe(rf_recipe) %>%
@@ -24,6 +24,7 @@ rf_workflow <- workflow() %>%
 rf_fits <- lapply(df_list_top10, function(df) {
   fit(rf_workflow, data = df)
 })
+
 
 # Evaluation
 
@@ -53,3 +54,28 @@ ggplot(rmse_df_rf, aes(x = reorder(station, RMSE), y = RMSE)) +
   theme_bw()
 
 
+# Predicted vs Actual
+ggplot(pred_df_rf, aes(x = .pred, y = rides)) +
+  geom_point(alpha = 0.4) +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  facet_wrap(~ station, scales = "free") +
+  labs(
+    title = "Random Forest: Predicted vs Actual Rides (Top 10 Stations)",
+    x = "Predicted rides",
+    y = "Actual rides"
+  ) +
+  theme_bw()
+
+rf_model <- pull_workflow_fit(rf_fits[[2]])$fit
+rf_model$variable.importance
+
+importance_df <- data.frame(
+  variable = names(rf_model$variable.importance),
+  importance = rf_model$variable.importance
+)
+
+ggplot(importance_df, aes(x = reorder(variable, importance), y = importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Random Forest Variable Importance") +
+  theme_minimal()
