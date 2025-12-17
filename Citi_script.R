@@ -1,0 +1,216 @@
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(readr)
+X202510_citibike_tripdata_1 <- read_csv("C:/Users/13154/Downloads/202510-citibike-tripdata/202510-citibike-tripdata_1.csv")
+X202510_citibike_tripdata_2 <- read_csv("C:/Users/13154/Downloads/202510-citibike-tripdata/202510-citibike-tripdata_2.csv")
+X202510_citibike_tripdata_3 <- read_csv("C:/Users/13154/Downloads/202510-citibike-tripdata/202510-citibike-tripdata_3.csv")
+X202510_citibike_tripdata_4 <- read_csv("C:/Users/13154/Downloads/202510-citibike-tripdata/202510-citibike-tripdata_4.csv")
+X202510_citibike_tripdata_5 <- read_csv("C:/Users/13154/Downloads/202510-citibike-tripdata/202510-citibike-tripdata_5.csv")
+NYC_October2025_Weather <- read_csv("C:/Users/13154/Downloads/NYC_October2025_Weather.csv")
+
+
+#Making sure all station ids are characters instead of numeric
+X202510_citibike_tripdata_1 <- X202510_citibike_tripdata_1 %>%
+  mutate(
+    start_station_id = as.character(start_station_id),
+    end_station_id   = as.character(end_station_id)
+  )
+
+X202510_citibike_tripdata_2 <- X202510_citibike_tripdata_2 %>%
+  mutate(
+    start_station_id = as.character(start_station_id),
+    end_station_id   = as.character(end_station_id)
+  )
+
+X202510_citibike_tripdata_3 <- X202510_citibike_tripdata_3 %>%
+  mutate(
+    start_station_id = as.character(start_station_id),
+    end_station_id   = as.character(end_station_id)
+  )
+
+X202510_citibike_tripdata_4 <- X202510_citibike_tripdata_4 %>%
+  mutate(
+    start_station_id = as.character(start_station_id),
+    end_station_id   = as.character(end_station_id)
+  )
+
+X202510_citibike_tripdata_5 <- X202510_citibike_tripdata_5 %>%
+  mutate(
+    start_station_id = as.character(start_station_id),
+    end_station_id   = as.character(end_station_id)
+  )
+
+#Combining all datasets together
+citibike_all <- bind_rows(
+  X202510_citibike_tripdata_1,
+  X202510_citibike_tripdata_2,
+  X202510_citibike_tripdata_3,
+  X202510_citibike_tripdata_4,
+  X202510_citibike_tripdata_5
+)
+
+
+
+#Cleaning data making sure able to combine weather data and all of the citibike data
+citibike_oct <- citibike_all %>%
+  mutate(started_at = ymd_hms(started_at)) %>%
+  filter(month(started_at) == 10)
+
+citibike_oct <- citibike_oct %>%
+  mutate(start_hour = floor_date(started_at, "hour"))
+
+NYC_October2025_Weather <- NYC_October2025_Weather %>%
+  rename(start_hour = datetime)
+
+citibike_weather <- citibike_oct %>%
+  left_join(NYC_October2025_Weather, by = "start_hour")
+
+
+
+
+#Hourly counts of bike data line graph
+hourly_counts <- citibike_oct %>%
+  mutate(hour = hour(started_at)) %>%
+  count(hour)
+
+ggplot(hourly_counts, aes(x = hour, y = n)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  labs(
+    title = "Citi Bike: Trips by Hour of Day (October)",
+    x = "Hour of Day",
+    y = "Number of Trips"
+  ) +
+  theme_minimal()
+
+#Daily counts of rides
+daily_counts <- citibike_oct %>%
+  mutate(day = date(started_at)) %>%
+  count(day)
+
+ggplot(daily_counts, aes(x = day, y = n)) +
+  geom_col() +
+  labs(
+    title = "Citi Bike: Trips by Day (October)",
+    x = "Day of Month",
+    y = "Number of Trips"
+  ) +
+  theme_minimal()
+
+
+#Heat map of different hours and days with number of rides
+heat <- citibike_oct %>%
+  mutate(
+    day = date(started_at),
+    hour = hour(started_at)
+  ) %>%
+  count(day, hour)
+
+ggplot(heat, aes(x = hour, y = day, fill = n)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Citi Bike Demand Heatmap (October)",
+    x = "Hour of Day",
+    y = "Day of Month",
+    fill = "Trips"
+  ) +
+  theme_minimal()
+
+#Getting minutes for trip duration
+citibike_oct <- citibike_oct %>%
+  mutate(trip_duration = as.numeric(difftime(ended_at, started_at, units = "mins")))
+
+citibike_clean <- citibike_oct %>%
+  filter(trip_duration > 1, trip_duration < 120) 
+
+#Histogram of Trip duration between 1 and 120 
+ggplot(citibike_clean, aes(x = trip_duration)) +
+  geom_histogram(bins = 50, fill = "steelblue") +
+  labs(
+    title = "Trip Duration Distribution (1–120 mins)",
+    x = "Trip Duration (minutes)",
+    y = "Count"
+  ) +
+  theme_minimal()  
+#Meber vs casual boxplot of trip durations
+ggplot(citibike_clean, aes(x = member_casual, y = trip_duration, fill = member_casual)) +
+  geom_boxplot() +
+  labs(
+    title = "Trip Duration: Members vs Casual Riders",
+    x = "Rider Type",
+    y = "Trip Duration (minutes)"
+  ) +
+  theme_minimal()  
+  
+#Member versus casual number bar plot
+citibike_clean %>%
+  count(member_casual) %>%
+  ggplot(aes(x = member_casual, y = n, fill = member_casual)) +
+  geom_col() +
+  labs(
+    title = "Number of Trips: Members vs Casual",
+    x = "Rider Type",
+    y = "Trip Count"
+  ) +
+  theme_minimal()
+
+#Precipitation histogram levels
+ggplot(citibike_weather, aes(x = precip)) +
+  geom_histogram(bins = 40, fill = "dodgerblue") +
+  labs(
+    title = "Distribution of Precipitation in October",
+    x = "Precipitation (in)",
+    y = "Hours"
+  ) +
+  theme_minimal()  
+
+#Temperature plot of different temperatures compared to number of rides
+temp_plot <- citibike_weather %>%
+  group_by(start_hour, temp) %>%
+  summarise(rides = n(), .groups = "drop")
+
+ggplot(temp_plot, aes(x = temp, y = rides)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(se = FALSE, linewidth = 1.2, color = "skyblue") +
+  labs(
+    title = "Impact of Temperature on Citi Bike Usage",
+    x = "Temperature (°F)",
+    y = "Number of Rides"
+  ) +
+  theme_minimal()
+
+
+#Creating Bar plot measuring different levels of precipitation in an hour 
+rain_plot <- citibike_weather %>%
+  mutate(
+    rain_level = case_when(
+      precip == 0 ~ "No Rain",
+      precip < 0.05 ~ "Light Rain",
+      precip < 0.2  ~ "Moderate Rain",
+      TRUE ~ "Heavy Rain"
+    )
+  ) %>%
+  count(rain_level)
+
+ggplot(rain_plot, aes(x = rain_level, y = n, fill = rain_level)) +
+  geom_col() +
+  labs(
+    title = "Ride Volume by Rainfall Category",
+    x = "Rain Category",
+    y = "Number of Rides"
+  ) +
+  theme_minimal()
+
+
+
+
+
+
+]
+
+
+
+
+
